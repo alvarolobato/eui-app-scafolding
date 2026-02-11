@@ -9,7 +9,7 @@ Keep this table updated whenever you create or update a spec file.
 | Spec | Status | Updated | Summary |
 | --- | --- | --- | --- |
 | [repository-consolidation](repository-consolidation.md) | done | 2026-02-11 | Consolidate merged souliss/openhab repos: documentation, specs, generator, generated file organization |
-| [application-scaffolding](application-scaffolding.md) | ready | 2026-02-11 | Create generic application scaffolding from zaas: Go backend, React frontend, Google auth, Elasticsearch/Kibana/APM stack, Tilt development workflow |
+| [application-scaffolding](application-scaffolding.md) | done | 2026-02-11 | Create generic application scaffolding from zaas: Go backend, React frontend, Google auth, Elasticsearch/Kibana/APM stack, Tilt development workflow |
 
 ## Rules
 

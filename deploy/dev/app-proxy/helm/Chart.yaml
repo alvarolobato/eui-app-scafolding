@@ -1,0 +1,5 @@
+apiVersion: v2
+name: app-proxy
+description: A simple TLS-terminating reverse proxy for local development
+type: application
+version: 0.1.0

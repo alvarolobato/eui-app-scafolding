@@ -1,0 +1,38 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 8.15.0-SNAPSHOT
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch
+    namespace: default
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          limits:
+            memory: "1Gi"
+          requests:
+            memory: "512Mi"
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+          httpGet:
+            path: /api/status
+            port: 5601
+            scheme: HTTP
+            httpHeaders:
+            - name: Authorization
+              value: Basic YWRtaW46Y2hhbmdlbWU= # admin:changeme
+  config:
+    xpack.banners.placement: top
+    xpack.banners.textContent: Log in credentials are `admin/changeme` by default

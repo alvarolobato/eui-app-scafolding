@@ -1,0 +1,31 @@
+# By default, images will be pulled from the local registry for development.
+imagePullSecret: ""
+
+# Elasticsearch datastore configuration
+elasticsearch:
+  url: http://elasticsearch-es-http:9200
+
+# app-backend configuration
+backend:
+  image: app-backend
+
+# app-frontend configuration
+frontend:
+  enabled: true
+  image: app-frontend
+
+# ingress configuration
+ingress:
+  enabled: false
+  endpoint: app.local
+
+# secrets configuration
+secret:
+  vault:
+    enabled: false
+    path: secret/k8s/app/
+
+# where to send observability data
+observability:
+  server_url: http://apm-server-apm-http:8200
+  use_secret_token: false

@@ -1,0 +1,14 @@
+{{- define "app.observability" }}
+{{- if .Values.observability.use_secret_token }}
+- name: ELASTIC_APM_SECRET_TOKEN
+  valueFrom:
+    secretKeyRef:
+      key: secret_token
+      name: apm
+{{ end }}
+- name: ELASTIC_APM_SERVER_URL
+  valueFrom:
+    configMapKeyRef:
+      key: server_url
+      name: apm
+{{- end }}

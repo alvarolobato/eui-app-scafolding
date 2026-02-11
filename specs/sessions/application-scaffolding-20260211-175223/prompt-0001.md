@@ -1,7 +1,158 @@
+# Agent loop protocol
+
+You are executing a spec in an iterative, multi-session loop.
+
+## Required behavior
+- Pick the **first unchecked** task(s) in `## Tasks`.
+- Implement **up to 50 tasks** per turn (including their acceptance checks).
+- **Before marking tasks complete**: If the tasks involve code changes, run all tests, linting, type-checking, and formatting commands for the repo. Fix any failures before proceeding. If the spec includes a dedicated "run checks" task, defer to that task instead.
+- Update the spec:
+  - Mark all completed tasks as done (`[x]`).
+  - Append discoveries/gotchas to `## Additional Context`.
+  - Adjust remaining tasks if reality differs (split/merge/reword as needed).
+  - Update `## Status`:
+    - `in-progress` when the first implementation task begins
+    - `done` only when the spec's "Definition of done" is met (and all tasks needed to satisfy it are complete)
+- Exit after updating the spec so the next fresh session can continue.
+
+## Spec source: File vs GitHub Issue
+
+**File-based specs** (prompt does NOT contain `<!-- Issue #`):
+- Update the local spec file directly
+- When `done`, update the status in `spec/README.md`
+
+**GitHub Issue specs** (prompt contains `<!-- Issue #N -->` and `<!-- URL: ... -->`):
+- The spec lives in the GitHub issue body, NOT a local file
+- Update the issue body using `gh issue edit`:
+  ```bash
+  gh issue edit <number> --repo <owner/repo> --body-file <temp-file>
+  ```
+- To update: read current body, modify it, write to temp file, then edit
+- Extract owner/repo from the `<!-- URL: https://github.com/<owner>/<repo>/issues/<N> -->` comment
+- Do NOT update local spec files or `spec/README.md` for issue-based specs
+- The next iteration will fetch the updated issue body from GitHub
+
+## Asking questions (GitHub Issue specs only)
+
+Sometimes you need clarification before proceeding. Use this protocol to pause and ask the user.
+
+**When to ask:**
+- Ambiguity in requirements that could lead to wrong implementation
+- Missing information needed to proceed
+- Need user decision between multiple valid approaches
+- Discovered a blocker that requires user input
+
+**How to ask:**
+1. Post a comment on the issue with the `## 🤖 Ralph says...` format:
+   ```bash
+   gh issue comment <number> --repo <owner/repo> --body "$(cat <<'EOF'
+   ## 🤖 Ralph says...
+
+   <Your question or clarification request>
+
+   **Options:** (if applicable)
+   1. Option A - description
+   2. Option B - description
+
+   ---
+   Blocked on: Task N (task name)
+   EOF
+   )"
+   ```
+
+2. Update the issue body to add a "Blocked on" section after `## Status`:
+   ```markdown
+   ## Status
+   agent-question
+
+   ## Blocked on
+   - **Task**: N (task name)
+   - **Question**: Brief summary of what you're asking
+   - **Waiting for**: User reply on this issue
+   ```
+
+3. Update labels:
+   ```bash
+   gh issue edit <number> --repo <owner/repo> --remove-label "status:in-progress" --add-label "status:agent-question"
+   ```
+
+4. Exit the session. The user will reply to your comment and set `status:ready` when you should continue.
+
+**Example question comment:**
+```
+## 🤖 Ralph says...
+
+I need clarification on the authentication approach. Should we use JWT tokens or session cookies for the login endpoint?
+
+**Options:**
+1. JWT - stateless, better for APIs
+2. Session cookies - simpler, better for web apps
+
+---
+Blocked on: Task 3 (Implement login endpoint)
+```
+
+**Resumption:** When the user replies and sets `status:ready`, the next session will see their answer in the issue comments. Read recent comments to find the user's response before continuing.
+
+## Adding tasks (GitHub Issue specs only)
+
+Sometimes you discover necessary work that wasn't in the original spec. Add tasks as needed and continue execution.
+
+**When to add tasks:**
+- Discovered prerequisite work not anticipated in the original spec
+- Found a bug or issue that must be fixed before continuing
+- Realized a task needs to be split into multiple steps
+- Identified missing tests, documentation, or cleanup work
+
+**How to add tasks:**
+1. Insert the new task(s) in the appropriate position in the `## Tasks` list. Use your judgment on placement:
+   - If it's a prerequisite, insert before the task that depends on it
+   - If it's follow-up work, insert after the related task
+   - If it's cleanup/polish, add near the end (before final commit/PR tasks)
+
+2. Add the `agent-added-tasks` label for audit trail:
+   ```bash
+   gh issue edit <number> --repo <owner/repo> --add-label "agent-added-tasks"
+   ```
+
+3. Post a comment explaining what was added and why:
+   ```bash
+   gh issue comment <number> --repo <owner/repo> --body "$(cat <<'EOF'
+   ## 🤖 Ralph says...
+
+   I've added new task(s) to the spec:
+
+   **Added tasks:**
+   - Task N: <description> - <reason why it's needed>
+
+   **Placement rationale:** <why you put it where you did>
+   EOF
+   )"
+   ```
+
+4. Continue with execution. The user will review task additions during PR review.
+
+**Example task-addition comment:**
+```
+## 🤖 Ralph says...
+
+I've added new task(s) to the spec:
+
+**Added tasks:**
+- Task 4: Add database migration for new user_preferences table - The existing schema doesn't support the preferences feature; we need a migration before implementing the API endpoint
+
+**Placement rationale:** Inserted before Task 5 (Implement preferences endpoint) since the endpoint depends on this table existing.
+```
+
+**Note:** The `agent-added-tasks` label remains as an audit trail showing this spec had tasks added during execution. The user reviews all changes during PR review.
+
+
+---
+
 # Application Scaffolding from ZaaS
 
 ## Status
-done
+ready
 
 ## Context
 - **Problem**: Need a generic, production-ready application scaffolding based on the zaas project (https://github.com/alvarolobato/zaas) that can be reused to create different applications. The zaas project is a Zoom-archival service with excellent infrastructure setup, but we need to strip out the domain-specific logic and create a generic template that retains all build, deployment, and observability infrastructure.
@@ -35,7 +186,7 @@ done
 ## Tasks
 
 ### Phase 1: Project Structure & Base Setup
-- [x] 1) Create root project structure and copy base configuration files (owner: agent)
+- [ ] 1) Create root project structure and copy base configuration files (owner: agent)
   - **Change**: Create directory structure and copy non-domain-specific files from zaas
   - **Files**: 
     - `/` (root): `.gitignore`, `Makefile`, `Tiltfile`
@@ -44,7 +195,7 @@ done
   - **Acceptance**: Directory structure exists, Tiltfile present, deploy/ folder structure matches zaas pattern
   - **Spec update**: Mark done, note any directory structure decisions
 
-- [x] 2) Set up Elasticsearch, Kibana, APM deployment configurations (owner: agent)
+- [ ] 2) Set up Elasticsearch, Kibana, APM deployment configurations (owner: agent)
   - **Change**: Copy ECK deployment YAML files and initialization scripts from zaas (elasticsearch.yaml, kibana.yaml, apm-server.yaml, init_es.sh)
   - **Files**: 
     - `/deploy/dev/elasticsearch.yaml`
@@ -54,7 +205,7 @@ done
   - **Acceptance**: Files present, init_es.sh creates generic "app-data" index instead of zaas-specific indices
   - **Spec update**: Mark done, document index names chosen
 
-- [x] 3) Create Helm chart structure (owner: agent)
+- [ ] 3) Create Helm chart structure (owner: agent)
   - **Change**: Copy zaas Helm chart, remove archiver cronjob, simplify to backend/frontend/proxy only
   - **Files**: 
     - `/deploy/helm/Chart.yaml`
@@ -68,7 +219,7 @@ done
   - **Spec update**: Mark done, note any values.yaml simplifications
 
 ### Phase 2: Backend Service
-- [x] 4) Create backend Go module and base structure (owner: agent)
+- [ ] 4) Create backend Go module and base structure (owner: agent)
   - **Change**: Create Go backend with HTTP server, config loading, logging, and OpenTelemetry setup (copy otel.go, basic patterns from zaas backend)
   - **Files**:
     - `/backend/go.mod`, `/backend/go.sum`
@@ -79,7 +230,7 @@ done
   - **Acceptance**: `go mod tidy` succeeds, builds successfully, no compilation errors
   - **Spec update**: Mark done, document dependencies chosen
 
-- [x] 5) Implement Google OAuth authentication in backend (owner: agent)
+- [ ] 5) Implement Google OAuth authentication in backend (owner: agent)
   - **Change**: Implement Google OAuth flow (copy oauth patterns from zaas, remove Zoom/Slack)
   - **Files**:
     - `/backend/auth.go` (OAuth state handling, token validation, middleware)
@@ -87,7 +238,7 @@ done
   - **Acceptance**: Backend exposes Google OAuth endpoints, can exchange auth code for token, validates JWT, stores user session in secure cookie
   - **Spec update**: Mark done, note OAuth scopes used
 
-- [x] 6) Create basic API endpoints (owner: agent)
+- [ ] 6) Create basic API endpoints (owner: agent)
   - **Change**: Implement simple API endpoints for frontend to consume
   - **Files**: `/backend/main.go` (add endpoints)
   - **Endpoints to implement**:
@@ -98,7 +249,7 @@ done
   - **Acceptance**: All endpoints return proper JSON, auth middleware protects /api/hello and /api/data, curl tests work locally
   - **Spec update**: Mark done, document API response formats
 
-- [x] 7) Implement Elasticsearch integration for session storage (owner: agent)
+- [ ] 7) Implement Elasticsearch integration for session storage (owner: agent)
   - **Change**: Create ES client, implement basic document storage for user sessions (simplified from zaas tokenstorage.go)
   - **Files**:
     - `/backend/storage.go` (ES client initialization, user session CRUD operations)
@@ -107,7 +258,7 @@ done
   - **Spec update**: Mark done, document ES index schema
 
 ### Phase 3: Frontend Application
-- [x] 8) Create React frontend structure with Vite (owner: agent)
+- [ ] 8) Create React frontend structure with Vite (owner: agent)
   - **Change**: Initialize React app with Vite, copy zaas frontend structure and EUI dependencies
   - **Files**:
     - `/frontend/package.json` (copy from zaas, verify EUI, React Router versions)
@@ -120,7 +271,7 @@ done
   - **Acceptance**: `yarn install` succeeds, `npm run dev` starts development server, EUI styles load correctly
   - **Spec update**: Mark done, document Node/npm versions required
 
-- [x] 9) Implement authentication context and Google OAuth flow (owner: agent)
+- [ ] 9) Implement authentication context and Google OAuth flow (owner: agent)
   - **Change**: Create React context for authentication, implement Google OAuth flow
   - **Files**:
     - `/frontend/src/auth.jsx` (simplified from zaas - only Google OAuth, profile management)
@@ -128,7 +279,7 @@ done
   - **Acceptance**: Auth context provides user profile, Google authentication state, and authorization function; OAuth redirect flow works
   - **Spec update**: Mark done
 
-- [x] 10) Create main application layout and routing (owner: agent)
+- [ ] 10) Create main application layout and routing (owner: agent)
   - **Change**: Set up React Router, create page layout with EUI components
   - **Files**:
     - `/frontend/src/app.jsx` (simplified from zaas)
@@ -138,7 +289,7 @@ done
   - **Acceptance**: Application renders, navigation works, EUI header displays, routes resolve correctly
   - **Spec update**: Mark done
 
-- [x] 11) Build Hello World page with backend integration (owner: agent)
+- [ ] 11) Build Hello World page with backend integration (owner: agent)
   - **Change**: Create home page that fetches and displays "Hello World" from backend API
   - **Files**: `/frontend/src/app.jsx` (add MainPage/HomePage component)
   - **Component requirements**:
@@ -150,7 +301,7 @@ done
   - **Acceptance**: Page renders, displays authenticated user info, shows backend message, handles loading/error states correctly
   - **Spec update**: Mark done, note any UX decisions
 
-- [x] 12) Build data table page with backend data (owner: agent)
+- [ ] 12) Build data table page with backend data (owner: agent)
   - **Change**: Create table component that fetches and displays data from backend
   - **Files**: `/frontend/src/app.jsx` (enhance MainPage or create DataTable component)
   - **Component requirements**:
@@ -163,7 +314,7 @@ done
   - **Spec update**: Mark done
 
 ### Phase 4: Development Environment & Integration
-- [x] 13) Configure zaas-proxy for local development (owner: agent)
+- [ ] 13) Configure zaas-proxy for local development (owner: agent)
   - **Change**: Set up reverse proxy for local development (copy zaas-proxy from zaas)
   - **Files**:
     - `/deploy/dev/zaas-proxy/main.go` (copy from zaas, rename to app-proxy)
@@ -172,7 +323,7 @@ done
   - **Acceptance**: Proxy routes /api to backend, everything else to frontend, works on https://localhost:8443/
   - **Spec update**: Mark done
 
-- [x] 14) Update Tiltfile for complete local development (owner: agent)
+- [ ] 14) Update Tiltfile for complete local development (owner: agent)
   - **Change**: Configure Tiltfile to orchestrate all services (copy from zaas, remove archiver)
   - **Files**: `/Tiltfile`
   - **Requirements**:
@@ -187,7 +338,7 @@ done
   - **Acceptance**: `tilt up` brings up entire stack, hot reload works for frontend, backend/proxy rebuild on changes, all resources green in Tilt UI
   - **Spec update**: Mark done, document any Tilt customizations
 
-- [x] 15) Create local development secrets setup (owner: agent)
+- [ ] 15) Create local development secrets setup (owner: agent)
   - **Change**: Document and create example secret files for local development
   - **Files**:
     - `/deploy/dev/secrets/google.yaml.example`
@@ -197,7 +348,7 @@ done
   - **Spec update**: Mark done
 
 ### Phase 5: Documentation & Finalization
-- [x] 16) Create comprehensive README (owner: agent)
+- [ ] 16) Create comprehensive README (owner: agent)
   - **Change**: Write README documenting setup, development, and architecture
   - **Files**: `/README.md`
   - **Sections**:
@@ -212,14 +363,14 @@ done
   - **Acceptance**: README is clear, setup instructions work for new developer, covers common scenarios
   - **Spec update**: Mark done
 
-- [x] 17) Create sample data generator for backend (owner: agent)
+- [ ] 17) Create sample data generator for backend (owner: agent)
   - **Change**: Implement sample data generation for the table endpoint
   - **Files**: `/backend/sampledata.go`
   - **Requirements**: Function that generates 50-100 sample records with varied data for table display
   - **Acceptance**: `GET /api/data` returns realistic sample data, different on each backend restart
   - **Spec update**: Mark done
 
-- [x] 18) Add basic backend tests (owner: agent)
+- [ ] 18) Add basic backend tests (owner: agent)
   - **Change**: Create test files for key backend functionality
   - **Files**:
     - `/backend/main_test.go` (HTTP handler tests)
@@ -227,7 +378,7 @@ done
   - **Acceptance**: `go test ./...` passes, basic coverage for auth and API endpoints
   - **Spec update**: Mark done
 
-- [x] 19) Verify complete integration and cleanup (owner: agent)
+- [ ] 19) Verify complete integration and cleanup (owner: agent)
   - **Change**: End-to-end testing and cleanup
   - **Tests**:
     - Fresh `tilt up` from clean state
@@ -291,52 +442,3 @@ done
 - Direct backend access via localhost:4000 (for debugging)
 - Kibana UI via localhost:5601
 - Elasticsearch via localhost:9200
-
-### Implementation Notes (Added During Development)
-
-#### Elasticsearch Indices Created
-- `app-sessions`: User session and OAuth token storage with schema for Google refresh tokens
-- `app-data`: Sample application data with fields for name, description, category, status, timestamps
-
-#### Backend Dependencies Used
-- Go 1.22.0
-- github.com/MicahParks/keyfunc v1.9.0 (Google JWT key management)
-- github.com/elastic/go-elasticsearch/v8 v8.19.1
-- github.com/golang-jwt/jwt/v4 v4.5.2
-- github.com/gorilla/securecookie v1.1.2
-- github.com/julienschmidt/httprouter v1.3.0
-- go.opentelemetry.io/* v1.39.0 (otel, traces, metrics)
-- go.uber.org/zap v1.27.1
-- golang.org/x/oauth2 v0.34.0
-
-#### OAuth Scopes Used
-- Google Sign-In: `openid email profile` (basic authentication)
-- No additional Google API scopes required for this scaffold
-
-#### API Response Formats
-- `/api/config`: `{ apm: { server_url }, google: { client_id, oauth_scope } }`
-- `/api/authenticate`: `{ profile: { name, id, email, picture }, google_authorized, google_oauth_state }`
-- `/api/user`: `{ name, email, picture, user_id }`
-- `/api/hello`: `{ message, timestamp, user }`
-- `/api/data`: `[{ id, name, description, created_at, status, category }, ...]`
-
-#### Frontend Features Implemented
-- EuiBasicTable with pagination, sorting, and search filtering
-- HelloSection component with loading states and error handling
-- DataTableSection with 50-100 sample records
-- Google Sign-In integration with FedCM support
-- EUI icons hack for static icon loading
-
-#### Directory Structure Decisions
-- Used `app-proxy` instead of `zaas-proxy` for generic naming
-- ES storage integrated into `auth.go` instead of separate `storage.go` file
-- Simplified to single `app.jsx` file containing all page components
-
-#### Final Verification Results (Task 19)
-- Backend: `go build`, `go vet`, `go test ./...` - all pass
-- Frontend: `npm install`, `npm run build`, `npm run lint` - all pass
-- Project structure verified: all 33+ source files in place
-- README.md: comprehensive documentation covering setup, architecture, and common tasks
-- Secrets example file: `deploy/dev/secrets/google.yaml.example` present
-- Tiltfile: configured for complete local development with ECK stack, hot reload, and port forwarding
-- ESLint config added for frontend code quality

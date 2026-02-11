@@ -1,0 +1,29 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: app-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: app-proxy
+    spec:
+      containers:
+        - image: app-proxy
+          imagePullPolicy: IfNotPresent
+          name: app-proxy
+          ports:
+            - containerPort: 8443
+          volumeMounts:
+            - name: app-tls-cert
+              mountPath: /tls
+              readOnly: true
+      volumes:
+        - name: app-tls-cert
+          secret:
+            secretName: app-tls-cert

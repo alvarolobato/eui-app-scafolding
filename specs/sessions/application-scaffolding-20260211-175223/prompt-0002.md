@@ -1,7 +1,158 @@
+# Agent loop protocol
+
+You are executing a spec in an iterative, multi-session loop.
+
+## Required behavior
+- Pick the **first unchecked** task(s) in `## Tasks`.
+- Implement **up to 50 tasks** per turn (including their acceptance checks).
+- **Before marking tasks complete**: If the tasks involve code changes, run all tests, linting, type-checking, and formatting commands for the repo. Fix any failures before proceeding. If the spec includes a dedicated "run checks" task, defer to that task instead.
+- Update the spec:
+  - Mark all completed tasks as done (`[x]`).
+  - Append discoveries/gotchas to `## Additional Context`.
+  - Adjust remaining tasks if reality differs (split/merge/reword as needed).
+  - Update `## Status`:
+    - `in-progress` when the first implementation task begins
+    - `done` only when the spec's "Definition of done" is met (and all tasks needed to satisfy it are complete)
+- Exit after updating the spec so the next fresh session can continue.
+
+## Spec source: File vs GitHub Issue
+
+**File-based specs** (prompt does NOT contain `<!-- Issue #`):
+- Update the local spec file directly
+- When `done`, update the status in `spec/README.md`
+
+**GitHub Issue specs** (prompt contains `<!-- Issue #N -->` and `<!-- URL: ... -->`):
+- The spec lives in the GitHub issue body, NOT a local file
+- Update the issue body using `gh issue edit`:
+  ```bash
+  gh issue edit <number> --repo <owner/repo> --body-file <temp-file>
+  ```
+- To update: read current body, modify it, write to temp file, then edit
+- Extract owner/repo from the `<!-- URL: https://github.com/<owner>/<repo>/issues/<N> -->` comment
+- Do NOT update local spec files or `spec/README.md` for issue-based specs
+- The next iteration will fetch the updated issue body from GitHub
+
+## Asking questions (GitHub Issue specs only)
+
+Sometimes you need clarification before proceeding. Use this protocol to pause and ask the user.
+
+**When to ask:**
+- Ambiguity in requirements that could lead to wrong implementation
+- Missing information needed to proceed
+- Need user decision between multiple valid approaches
+- Discovered a blocker that requires user input
+
+**How to ask:**
+1. Post a comment on the issue with the `## 🤖 Ralph says...` format:
+   ```bash
+   gh issue comment <number> --repo <owner/repo> --body "$(cat <<'EOF'
+   ## 🤖 Ralph says...
+
+   <Your question or clarification request>
+
+   **Options:** (if applicable)
+   1. Option A - description
+   2. Option B - description
+
+   ---
+   Blocked on: Task N (task name)
+   EOF
+   )"
+   ```
+
+2. Update the issue body to add a "Blocked on" section after `## Status`:
+   ```markdown
+   ## Status
+   agent-question
+
+   ## Blocked on
+   - **Task**: N (task name)
+   - **Question**: Brief summary of what you're asking
+   - **Waiting for**: User reply on this issue
+   ```
+
+3. Update labels:
+   ```bash
+   gh issue edit <number> --repo <owner/repo> --remove-label "status:in-progress" --add-label "status:agent-question"
+   ```
+
+4. Exit the session. The user will reply to your comment and set `status:ready` when you should continue.
+
+**Example question comment:**
+```
+## 🤖 Ralph says...
+
+I need clarification on the authentication approach. Should we use JWT tokens or session cookies for the login endpoint?
+
+**Options:**
+1. JWT - stateless, better for APIs
+2. Session cookies - simpler, better for web apps
+
+---
+Blocked on: Task 3 (Implement login endpoint)
+```
+
+**Resumption:** When the user replies and sets `status:ready`, the next session will see their answer in the issue comments. Read recent comments to find the user's response before continuing.
+
+## Adding tasks (GitHub Issue specs only)
+
+Sometimes you discover necessary work that wasn't in the original spec. Add tasks as needed and continue execution.
+
+**When to add tasks:**
+- Discovered prerequisite work not anticipated in the original spec
+- Found a bug or issue that must be fixed before continuing
+- Realized a task needs to be split into multiple steps
+- Identified missing tests, documentation, or cleanup work
+
+**How to add tasks:**
+1. Insert the new task(s) in the appropriate position in the `## Tasks` list. Use your judgment on placement:
+   - If it's a prerequisite, insert before the task that depends on it
+   - If it's follow-up work, insert after the related task
+   - If it's cleanup/polish, add near the end (before final commit/PR tasks)
+
+2. Add the `agent-added-tasks` label for audit trail:
+   ```bash
+   gh issue edit <number> --repo <owner/repo> --add-label "agent-added-tasks"
+   ```
+
+3. Post a comment explaining what was added and why:
+   ```bash
+   gh issue comment <number> --repo <owner/repo> --body "$(cat <<'EOF'
+   ## 🤖 Ralph says...
+
+   I've added new task(s) to the spec:
+
+   **Added tasks:**
+   - Task N: <description> - <reason why it's needed>
+
+   **Placement rationale:** <why you put it where you did>
+   EOF
+   )"
+   ```
+
+4. Continue with execution. The user will review task additions during PR review.
+
+**Example task-addition comment:**
+```
+## 🤖 Ralph says...
+
+I've added new task(s) to the spec:
+
+**Added tasks:**
+- Task 4: Add database migration for new user_preferences table - The existing schema doesn't support the preferences feature; we need a migration before implementing the API endpoint
+
+**Placement rationale:** Inserted before Task 5 (Implement preferences endpoint) since the endpoint depends on this table existing.
+```
+
+**Note:** The `agent-added-tasks` label remains as an audit trail showing this spec had tasks added during execution. The user reviews all changes during PR review.
+
+
+---
+
 # Application Scaffolding from ZaaS
 
 ## Status
-done
+in-progress
 
 ## Context
 - **Problem**: Need a generic, production-ready application scaffolding based on the zaas project (https://github.com/alvarolobato/zaas) that can be reused to create different applications. The zaas project is a Zoom-archival service with excellent infrastructure setup, but we need to strip out the domain-specific logic and create a generic template that retains all build, deployment, and observability infrastructure.
@@ -227,7 +378,7 @@ done
   - **Acceptance**: `go test ./...` passes, basic coverage for auth and API endpoints
   - **Spec update**: Mark done
 
-- [x] 19) Verify complete integration and cleanup (owner: agent)
+- [ ] 19) Verify complete integration and cleanup (owner: agent)
   - **Change**: End-to-end testing and cleanup
   - **Tests**:
     - Fresh `tilt up` from clean state
@@ -331,12 +482,3 @@ done
 - Used `app-proxy` instead of `zaas-proxy` for generic naming
 - ES storage integrated into `auth.go` instead of separate `storage.go` file
 - Simplified to single `app.jsx` file containing all page components
-
-#### Final Verification Results (Task 19)
-- Backend: `go build`, `go vet`, `go test ./...` - all pass
-- Frontend: `npm install`, `npm run build`, `npm run lint` - all pass
-- Project structure verified: all 33+ source files in place
-- README.md: comprehensive documentation covering setup, architecture, and common tasks
-- Secrets example file: `deploy/dev/secrets/google.yaml.example` present
-- Tiltfile: configured for complete local development with ECK stack, hot reload, and port forwarding
-- ESLint config added for frontend code quality

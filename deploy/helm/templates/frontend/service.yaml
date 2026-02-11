@@ -1,0 +1,11 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-frontend
+spec:
+  selector:
+    app: app-frontend
+  ports:
+    - port: 3000
+{{- end }}

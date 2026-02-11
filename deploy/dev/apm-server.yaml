@@ -1,0 +1,24 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm-server
+spec:
+  version: 8.15.0-SNAPSHOT
+  count: 1
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  config:
+    apm-server:
+      auth:
+        secret_token: ""
+    logging:
+      level: info
+    output:
+      elasticsearch:
+        username: admin
+        password: changeme
+  elasticsearchRef:
+    name: elasticsearch
+    namespace: default

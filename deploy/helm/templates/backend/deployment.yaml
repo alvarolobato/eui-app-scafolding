@@ -1,0 +1,70 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-backend
+  template:
+    metadata:
+      annotations:
+        co.elastic.logs/json.add_error_key: "true"
+        co.elastic.logs/json.keys_under_root: "true"
+      labels:
+        app: app-backend
+    spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      containers:
+      - env:
+        - name: ELASTICSEARCH_URL
+          valueFrom:
+            configMapKeyRef:
+              key: url
+              name: elasticsearch
+              optional: false
+        - name: ELASTICSEARCH_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: api_key
+              name: elasticsearch
+              optional: true
+
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: client_id
+              name: google
+              optional: false
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: client_secret
+              name: google
+              optional: false
+
+        - name: ADMIN_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: admin_secret
+              name: app
+              optional: false
+        - name: ENCRYPTION_KEYS
+          valueFrom:
+            secretKeyRef:
+              key: encryption_keys
+              name: app
+              optional: true
+
+        {{- include "app.observability" . | indent 8 }}
+
+        image: {{ .Values.backend.image }}:{{ .Values.backend.tag | default .Chart.AppVersion }}
+        imagePullPolicy: IfNotPresent
+        name: app-backend
+        ports:
+        - containerPort: 4000

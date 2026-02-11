@@ -1,0 +1,30 @@
+{{- if .Values.frontend.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-frontend
+  template:
+    metadata:
+      annotations:
+        co.elastic.logs/json.add_error_key: "true"
+        co.elastic.logs/json.keys_under_root: "true"
+      labels:
+        app: app-frontend
+    spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret }}
+      {{- end }}
+      containers:
+      - image: {{ .Values.frontend.image }}:{{ .Values.frontend.tag | default .Chart.AppVersion }}
+        imagePullPolicy: IfNotPresent
+        name: app-frontend
+        ports:
+        - containerPort: 3000
+{{- end }}

@@ -1,0 +1,9 @@
+{{- $cert := genSelfSignedCert "localhost" nil nil 3650 }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-tls-cert
+data:
+  cert.pem: {{ b64enc $cert.Cert }}
+  key.pem: {{ b64enc $cert.Key }}
