@@ -32,9 +32,9 @@ const router = createBrowserRouter([
     id: "root",
     element: <Root/>,
     loader: async () => {
-      return fetch("/api/config").then(response => {
-        if (response.ok) {return response.json();}
-      })
+      const response = await fetch("/api/config");
+      if (response.ok) return response.json();
+      return { apm: { server_url: '' }, google: { client_id: '', oauth_scope: 'openid email profile' } };
     },
     children: [
       {

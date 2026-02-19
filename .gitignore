@@ -28,3 +28,4 @@ yarn-error.log*
 # config
 config.yml
 **/secrets/**
+!**/secrets/*.example
